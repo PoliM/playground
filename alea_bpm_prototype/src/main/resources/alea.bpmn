@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<definitions id="Definition"
+             targetNamespace="http://www.jboss.org/drools"
+             typeLanguage="http://www.java.com/javaTypes"
+             expressionLanguage="http://www.mvel.org/2.0"
+             xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd"
+             xmlns:g="http://www.jboss.org/drools/flow/gpd"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:tns="http://www.jboss.org/drools">
+
+  <itemDefinition id="_gameIdItem" structureRef="Long" />
+  <itemDefinition id="_gameUploadOkItem" structureRef="Boolean" />
+  <itemDefinition id="_isVipItem" structureRef="Boolean" />
+  <itemDefinition id="_rejectedItem" structureRef="Boolean" />
+  <itemDefinition id="_reasonItem" structureRef="String" />
+
+  <process processType="Private" isExecutable="true" id="ch.bbv.alea.bpm.uploadValidation" name="ALEA Upload Validation" tns:packageName="ch.bbv.alea.bpm" tns:version="1" >
+
+    <extensionElements>
+     <tns:import name="ch.bbv.alea.bpm.WorkflowServiceFactory" />
+    </extensionElements>
+    <!-- process variables -->
+    <property id="gameId" itemSubjectRef="_gameIdItem"/>
+    <property id="gameUploadOk" itemSubjectRef="_gameUploadOkItem"/>
+    <property id="isVip" itemSubjectRef="_isVipItem"/>
+    <property id="rejected" itemSubjectRef="_rejectedItem"/>
+    <property id="reason" itemSubjectRef="_reasonItem"/>
+
+    <!-- nodes -->
+    <startEvent id="_1" name="Start" />
+    <scriptTask id="_2" name="Check uploaded game" >
+      <script>gameUploadOk = WorkflowServiceFactory.getWorkflowService().checkUploadedGame(gameId);
+kcontext.setVariable("gameUploadOk", gameUploadOk);</script>
+    </scriptTask>
+    <exclusiveGateway id="_3" name="Gateway" gatewayDirection="Diverging" />
+    <scriptTask id="_4" name="Send EMail: bad upload" >
+      <script>WorkflowServiceFactory.getWorkflowService().sendBadUploadEMail(gameId);</script>
+    </scriptTask>
+    <endEvent id="_5" name="End" >
+        <terminateEventDefinition/>
+    </endEvent>
+    <scriptTask id="_6" name="Check customer" >
+      <script>isVip = WorkflowServiceFactory.getWorkflowService().checkCustomerVip(gameId);
+kcontext.setVariable("isVip", isVip);</script>
+    </scriptTask>
+    <exclusiveGateway id="_7" name="Gateway" gatewayDirection="Diverging" />
+    <scriptTask id="_8" name="Publish game" >
+      <script>WorkflowServiceFactory.getWorkflowService().publishGame(gameId);
+</script>
+    </scriptTask>
+    <scriptTask id="_9" name="Send EMail: published" >
+      <script>WorkflowServiceFactory.getWorkflowService().sendGamePublishedEMail(gameId);
+</script>
+    </scriptTask>
+    <exclusiveGateway id="_10" name="Gateway" gatewayDirection="Converging" />
+    <userTask id="_11" name="Manually analyze game" >
+      <ioSpecification>
+        <dataInput id="_11_gameIdInput" name="gameId" />
+        <dataInput id="_11_GroupIdInput" name="GroupId" />
+        <dataOutput id="_11_reasonOutput" name="reason" />
+        <dataOutput id="_11_rejectedOutput" name="rejected" />
+        <inputSet>
+          <dataInputRefs>_11_gameIdInput</dataInputRefs>
+          <dataInputRefs>_11_GroupIdInput</dataInputRefs>
+        </inputSet>
+        <outputSet>
+          <dataOutputRefs>_11_reasonOutput</dataOutputRefs>
+          <dataOutputRefs>_11_rejectedOutput</dataOutputRefs>
+        </outputSet>
+      </ioSpecification>
+      <dataInputAssociation>
+        <sourceRef>gameId</sourceRef>
+        <targetRef>_11_gameIdInput</targetRef>
+      </dataInputAssociation>
+      <dataInputAssociation>
+        <targetRef>_11_GroupIdInput</targetRef>
+        <assignment>
+          <from xsi:type="tFormalExpression">GameValidators</from>
+          <to xsi:type="tFormalExpression">_11_GroupIdInput</to>
+        </assignment>
+      </dataInputAssociation>
+      <dataOutputAssociation>
+        <sourceRef>_11_reasonOutput</sourceRef>
+        <targetRef>reason</targetRef>
+      </dataOutputAssociation>
+      <dataOutputAssociation>
+        <sourceRef>_11_rejectedOutput</sourceRef>
+        <targetRef>rejected</targetRef>
+      </dataOutputAssociation>
+    </userTask>
+    <exclusiveGateway id="_12" name="Gateway" gatewayDirection="Diverging" />
+    <exclusiveGateway id="_13" name="Gateway" gatewayDirection="Converging" />
+    <scriptTask id="_14" name="Send EMail: rejection" >
+      <script>WorkflowServiceFactory.getWorkflowService().sendGameRejectedEMail(gameId, reason);
+</script>
+    </scriptTask>
+
+    <!-- connections -->
+    <sequenceFlow id="_1-_2" sourceRef="_1" targetRef="_2" />
+    <sequenceFlow id="_2-_3" sourceRef="_2" targetRef="_3" />
+    <sequenceFlow id="_3-_4" sourceRef="_3" targetRef="_4" name="bad" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return gameUploadOk==false;</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="_10-_5" sourceRef="_10" targetRef="_5" />
+    <sequenceFlow id="_3-_6" sourceRef="_3" targetRef="_6" name="ok" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return gameUploadOk;</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="_6-_7" sourceRef="_6" targetRef="_7" />
+    <sequenceFlow id="_13-_8" sourceRef="_13" targetRef="_8" />
+    <sequenceFlow id="_8-_9" sourceRef="_8" targetRef="_9" />
+    <sequenceFlow id="_4-_10" sourceRef="_4" targetRef="_10" />
+    <sequenceFlow id="_9-_10" sourceRef="_9" targetRef="_10" />
+    <sequenceFlow id="_14-_10" sourceRef="_14" targetRef="_10" />
+    <sequenceFlow id="_7-_11" sourceRef="_7" targetRef="_11" name="regular" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return isVip==false;</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="_11-_12" sourceRef="_11" targetRef="_12" />
+    <sequenceFlow id="_12-_13" sourceRef="_12" targetRef="_13" name="ok" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return rejected==false;</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="_7-_13" sourceRef="_7" targetRef="_13" name="VIP" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return isVip;</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="_12-_14" sourceRef="_12" targetRef="_14" name="rejected" tns:priority="1" >
+      <conditionExpression xsi:type="tFormalExpression" >return rejected;</conditionExpression>
+    </sequenceFlow>
+
+  </process>
+
+  <bpmndi:BPMNDiagram>
+    <bpmndi:BPMNPlane bpmnElement="ch.bbv.alea.bpm.uploadValidation" >
+      <bpmndi:BPMNShape bpmnElement="_1" >
+        <dc:Bounds x="256" y="14" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_2" >
+        <dc:Bounds x="195" y="95" width="171" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_3" >
+        <dc:Bounds x="257" y="164" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_4" >
+        <dc:Bounds x="33" y="178" width="164" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_5" >
+        <dc:Bounds x="307" y="713" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_6" >
+        <dc:Bounds x="361" y="180" width="128" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_7" >
+        <dc:Bounds x="404" y="254" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_8" >
+        <dc:Bounds x="375" y="487" width="118" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_9" >
+        <dc:Bounds x="357" y="571" width="161" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_10" >
+        <dc:Bounds x="303" y="644" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_11" >
+        <dc:Bounds x="196" y="319" width="184" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_12" >
+        <dc:Bounds x="267" y="388" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_13" >
+        <dc:Bounds x="408" y="414" width="48" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="_14" >
+        <dc:Bounds x="169" y="483" width="149" height="48" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="_1-_2" >
+        <di:waypoint x="280" y="38" />
+        <di:waypoint x="280" y="119" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_2-_3" >
+        <di:waypoint x="280" y="119" />
+        <di:waypoint x="281" y="188" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_3-_4" >
+        <di:waypoint x="281" y="188" />
+        <di:waypoint x="115" y="202" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_10-_5" >
+        <di:waypoint x="327" y="668" />
+        <di:waypoint x="331" y="737" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_3-_6" >
+        <di:waypoint x="281" y="188" />
+        <di:waypoint x="425" y="204" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_6-_7" >
+        <di:waypoint x="425" y="204" />
+        <di:waypoint x="428" y="278" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_13-_8" >
+        <di:waypoint x="432" y="438" />
+        <di:waypoint x="434" y="511" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_8-_9" >
+        <di:waypoint x="434" y="511" />
+        <di:waypoint x="437" y="595" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_4-_10" >
+        <di:waypoint x="115" y="202" />
+        <di:waypoint x="120" y="621" />
+        <di:waypoint x="327" y="668" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_9-_10" >
+        <di:waypoint x="437" y="595" />
+        <di:waypoint x="327" y="668" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_14-_10" >
+        <di:waypoint x="243" y="507" />
+        <di:waypoint x="327" y="668" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_7-_11" >
+        <di:waypoint x="428" y="278" />
+        <di:waypoint x="345" y="281" />
+        <di:waypoint x="288" y="343" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_11-_12" >
+        <di:waypoint x="288" y="343" />
+        <di:waypoint x="291" y="412" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_12-_13" >
+        <di:waypoint x="291" y="412" />
+        <di:waypoint x="432" y="438" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_7-_13" >
+        <di:waypoint x="428" y="278" />
+        <di:waypoint x="432" y="438" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="_12-_14" >
+        <di:waypoint x="291" y="412" />
+        <di:waypoint x="243" y="507" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>
