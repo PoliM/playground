@@ -114,6 +114,47 @@ public class TestAleaGameCheck {
 
 		when(workflowService.checkUploadedGame(12345)).thenReturn(true);
 		when(workflowService.checkCustomerVip(12345)).thenReturn(false);
+		when(workflowService.checkGameUploadState(12345)).thenReturn(GameUploadState.OK);
+
+		// Act
+		WorkflowProcessInstance processInstance = startProcess(ksession, params);
+
+		// Assert
+		verify(workflowService).checkUploadedGame(12345);
+		verify(workflowService).checkGameUploadState(12345);
+		verify(workflowService).publishGame(12345);
+		verify(workflowService).sendGamePublishedEMail(12345);
+		assertTrue(processInstance.getState() == ProcessInstance.STATE_COMPLETED);
+	}
+
+	@Test
+	public void whenNonVipAndBadGameThenReject() throws Exception {
+		// Arrange
+		Map<String, Object> params = createProcessParameters(12345);
+
+		when(workflowService.checkUploadedGame(12345)).thenReturn(true);
+		when(workflowService.checkCustomerVip(12345)).thenReturn(false);
+		when(workflowService.checkGameUploadState(12345)).thenReturn(GameUploadState.REJECT);
+
+		// Act
+		WorkflowProcessInstance processInstance = startProcess(ksession, params);
+
+		// Assert
+		verify(workflowService).checkUploadedGame(12345);
+		verify(workflowService, never()).publishGame(anyLong());
+		verify(workflowService, never()).sendGamePublishedEMail(anyLong());
+		verify(workflowService).sendGameRejectedEMail(12345, "Code contains bad API calls");
+		assertTrue(processInstance.getState() == ProcessInstance.STATE_COMPLETED);
+	}
+
+	@Test
+	public void whenNonVipAndManualGoodGameThenPublish() throws Exception {
+		// Arrange
+		Map<String, Object> params = createProcessParameters(12345);
+
+		when(workflowService.checkUploadedGame(12345)).thenReturn(true);
+		when(workflowService.checkCustomerVip(12345)).thenReturn(false);
+		when(workflowService.checkGameUploadState(12345)).thenReturn(GameUploadState.MANUAL);
 
 		// Act
 		WorkflowProcessInstance processInstance = startProcess(ksession, params);
@@ -129,24 +170,25 @@ public class TestAleaGameCheck {
 	}
 
 	@Test
-	public void whenNonVipAndBadGameThenReject() throws Exception {
+	public void whenNonVipAndManualBadGameThenReject() throws Exception {
 		// Arrange
 		Map<String, Object> params = createProcessParameters(12345);
 
 		when(workflowService.checkUploadedGame(12345)).thenReturn(true);
 		when(workflowService.checkCustomerVip(12345)).thenReturn(false);
+		when(workflowService.checkGameUploadState(12345)).thenReturn(GameUploadState.MANUAL);
 
 		// Act
 		WorkflowProcessInstance processInstance = startProcess(ksession, params);
 
 		// Human Task step
-		validateAndCompleteHumanTask_ManualGameCheck(Boolean.TRUE, "Contains bad stuf");
+		validateAndCompleteHumanTask_ManualGameCheck(Boolean.TRUE, "Contains commercials");
 
 		// Assert
 		verify(workflowService).checkUploadedGame(12345);
 		verify(workflowService, never()).publishGame(anyLong());
 		verify(workflowService, never()).sendGamePublishedEMail(anyLong());
-		verify(workflowService).sendGameRejectedEMail(12345, "Contains bad stuf");
+		verify(workflowService).sendGameRejectedEMail(12345, "Contains commercials");
 		assertTrue(processInstance.getState() == ProcessInstance.STATE_COMPLETED);
 	}
 

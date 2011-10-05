@@ -28,4 +28,9 @@ public class WorkflowServiceImpl implements WorkflowService {
 	public void sendGameRejectedEMail(long gameId, String reason) {
 	}
 
+	@Override
+	public GameUploadState checkGameUploadState(long gameId) {
+		return null;
+	}
+
 }

@@ -8,6 +8,8 @@ public interface WorkflowService {
 
 	public boolean checkCustomerVip(long gameId);
 
+	public GameUploadState checkGameUploadState(long gameId);
+
 	public void publishGame(long gameId);
 
 	public void sendGamePublishedEMail(long gameId);
