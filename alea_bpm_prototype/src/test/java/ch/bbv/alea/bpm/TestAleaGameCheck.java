@@ -31,7 +31,6 @@ import org.mockito.MockitoAnnotations;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 
-;
 public class TestAleaGameCheck {
 
 	@Mock
