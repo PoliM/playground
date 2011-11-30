@@ -6,4 +6,5 @@ public class HelloWorld {
 		System.out.println("Hello World");
 	}
 
+	// Geht das via pub wlan?
 }
